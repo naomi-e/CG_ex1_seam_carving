@@ -111,7 +111,15 @@ public class ImageProcessor extends FunctioalForEachLoops {
 			greyscaleImage.setRGB(x, y, greyscalePixel.getRGB());
 
 		});
+
+		//TODO: REMOVE THIS!
+
+		//SeamsCarver
+		//SeamsCarver.getPixelEnergy(0,0);
+
 		return greyscaleImage;
+
+
 	}
 
 	public BufferedImage nearestNeighbor() {
