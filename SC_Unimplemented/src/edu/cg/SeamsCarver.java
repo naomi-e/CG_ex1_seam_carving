@@ -16,7 +16,7 @@ public class SeamsCarver extends ImageProcessor {
 	private ResizeOperation resizeOp;
 	boolean[][] imageMask;
 
-
+	int hi = 1;
 	protected  long[][] costMatrix;// a cost matrix that contains the path to be taken to find a desired seam
 	protected BufferedImage greyscaleImage;
 
