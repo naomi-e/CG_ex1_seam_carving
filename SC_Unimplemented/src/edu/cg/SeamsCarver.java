@@ -19,9 +19,7 @@ public class SeamsCarver extends ImageProcessor {
 	public SeamsCarver(Logger logger, BufferedImage workingImage, int outWidth, RGBWeights rgbWeights,
 			boolean[][] imageMask) {
 		super((s) -> logger.log("Seam carving: " + s), workingImage, rgbWeights, outWidth, workingImage.getHeight());
-		//testing
 
-		System.out.println("hi!");
 		numOfSeams = Math.abs(outWidth - inWidth);
 		this.imageMask = imageMask;
 		if (inWidth < 2 | inHeight < 2)
@@ -42,6 +40,7 @@ public class SeamsCarver extends ImageProcessor {
 
 		this.logger.log("preliminary calculations were ended.");
 	}
+
 
 	public BufferedImage resize() {
 		return resizeOp.resize();
@@ -73,4 +72,11 @@ public class SeamsCarver extends ImageProcessor {
 		// remove (replicate) the matching entries from the mask as well.
 		throw new UnimplementedMethodException("getMaskAfterSeamCarving");
 	}
+
+	//----------------------------- GRADIENT ----------------------------------------//
+
+	public int[][] getGradient () {
+		return null;
+	}
+
 }
