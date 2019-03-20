@@ -14,6 +14,9 @@ public class SeamsCarver extends ImageProcessor {
 	private int numOfSeams;
 	private ResizeOperation resizeOp;
 	boolean[][] imageMask;
+
+
+	protected  long[][] costMatrix;// a cost matrix that contains the path to be taken to find a desired seam
 	// TODO: Add some additional fields
 
 	public SeamsCarver(Logger logger, BufferedImage workingImage, int outWidth, RGBWeights rgbWeights,
@@ -75,8 +78,102 @@ public class SeamsCarver extends ImageProcessor {
 
 	//----------------------------- GRADIENT ----------------------------------------//
 
-	public int[][] getGradient () {
-		return null;
+
+
+
+
+
+
+
+
+	//---------------------------- ENERGY MATRIX ----------------------
+	//returns the pixels energy , according to the diffenition of energy
+	private long getPixelEnergy( int pixelX, int pixelJ)
+	{
+
+
 	}
 
+
+	///takes a grey image, modifies the protected cost matrix and returns it,
+	///
+	private long[][] startCalculatingCostMatrix(BufferedImage greyScaleImage)
+	{
+		costMatrix = new long[greyScaleImage.getWidth()+1][greyScaleImage.getHeight()+1];//TODO: make sure its the right size
+
+		//fills the first row with pixel energy
+		for (int x=1;x<=greyScaleImage.getWidth();x++)
+		{
+			costMatrix[x][1]=getPixelEnergy(x,1);
+		}
+
+		//passses over the rest of the matrix , calculating each specifics cells/pixels cost
+		for (int y = 1; y<=greyScaleImage.getHeight();y++)
+		{
+			for(int x=1;x<=greyScaleImage.getWidth();x++)
+			{
+				 calculateCostMatrixElement(greyScaleImage,x,y);
+			}
+		}
+
+
+		return costMatrix;
+	}
+
+
+	//returns the minimum number between 3 long numbers
+	private long minimumOfThree(long a,long b,long c)
+	{
+		return Math.min(a,Math.min(b,c));
+	}
+
+	//TODO: remember there will be errors if you call this method from the first  column
+	//todo: not sure f this is the correct implementation to begin with
+
+	// named by its definition : returns the valued difference between (x,y)'s new neighbours  that were created depending on how the seam was removed  ,
+	private	long ClForCostMatrix(BufferedImage greyscaleImage,int x,int y)
+	{
+
+		return Math.abs((int) ((new Color (greyscaleImage.getRGB(x+1, y)).getBlue())) - (int) ((new Color (greyscaleImage.getRGB(x-1, y)).getBlue()))) +Math.abs((int) ((new Color (greyscaleImage.getRGB(x-1, y)).getBlue()))- (int) ((new Color (greyscaleImage.getRGB(x, y-1)).getBlue())))
+
+	}
+	// named by its definition : returns the valued difference between (x,y)'s new neighbours  that were created depending on how the seam was removed  ,
+	private long CvForCostMatrix(bufferedImage greyscaleImage,int x , int y)
+	{
+
+			return Math.abs((int) ((new Color (greyscaleImage.getRGB(x+1, y)).getBlue())) - (int) ((new Color (greyscaleImage.getRGB(x-1, y)).getBlue()))) ;
+
+	}
+	// named by its definition : returns the valued difference between (x,y)'s new neighbours  that were created depending on how the seam was removed  ,
+	private long CrForCostMatrix(bufferedImage greyscaleImage,int x , int y)
+	{
+
+		return Math.abs((int) ((new Color (greyscaleImage.getRGB(x+1, y)).getBlue())) - (int) ((new Color (greyscaleImage.getRGB(x-1, y)).getBlue()))) + Math.abs((int) ((new Color (greyscaleImage.getRGB(x, y-1)).getBlue())) - (int) ((new Color (greyscaleImage.getRGB(x+1, y)).getBlue())));
+
+	}
+
+
+	//changes the cost of this pixel , in the cost matrix
+	private void calculateCostMatrixElement(BufferedImage greyscaleImage,int x, int y)
+	{
+
+		//if we are on the first column , thus cant have an upper left corener
+		//todo: mekre ketsoon , make sure this works
+		if(x==1)
+		{
+
+			costMatrix[x][y]=getPixelEnergy(x, y) + Math.min(costMatrix[x][y-1],costMatrix[x+1][y-1]);
+
+		}
+		//todo: mekre ketsoon , make sure this works
+		else if(x==greyscaleImage.getWidth())
+		{
+			costMatrix[x][y]=getPixelEnergy(x, y) + Math.min(costMatrix[x-1][y-1],costMatrix[x][y-1]);
+
+		}
+		else {
+			//adds the new value to the matrix acording to the difinition in the homeowork pdf
+			costMatrix[x][y]=getPixelEnergy(x, y) + minimumOfThree(costMatrix[x - 1][ y - 1]+ClForCostMatrix(greyscaleImage,x,y),costMatrix[x][y-1]+CvForCostMatrix(greyscaleImage,x,y),costMatrix[x+1][y - 1]+CrForCostMatrix(greyscaleImage,x,y)) ;
+		}
+	}
 }
