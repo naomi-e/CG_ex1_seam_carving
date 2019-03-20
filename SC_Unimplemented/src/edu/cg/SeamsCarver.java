@@ -1,5 +1,6 @@
 package edu.cg;
 
+import java.awt.*;
 import java.awt.image.BufferedImage;
 
 public class SeamsCarver extends ImageProcessor {
@@ -14,6 +15,8 @@ public class SeamsCarver extends ImageProcessor {
 	private int numOfSeams;
 	private ResizeOperation resizeOp;
 	boolean[][] imageMask;
+	protected BufferedImage greyscaleImage;
+
 	// TODO: Add some additional fields
 
 	public SeamsCarver(Logger logger, BufferedImage workingImage, int outWidth, RGBWeights rgbWeights,
@@ -37,20 +40,28 @@ public class SeamsCarver extends ImageProcessor {
 			resizeOp = this::duplicateWorkingImage;
 
 		// TODO: You may initialize your additional fields and apply some preliminary calculations.
+		greyscaleImage = greyscale();
+
 
 		this.logger.log("preliminary calculations were ended.");
 	}
 
 
-	public BufferedImage resize() {
-		return resizeOp.resize();
-	}
+	public BufferedImage resize() { return resizeOp.resize(); }
 
+	/**
+	 * to reduce an image's width, we can remove the seams one by one - numOfSeams times
+	 * @return a buffered image of width outWidth
+	 */
 	private BufferedImage reduceImageWidth() {
 		// TODO: Implement this method, remove the exception.
 		throw new UnimplementedMethodException("reduceImageWidth");
 	}
 
+	/**
+	 * to enlarge an image, we must first find all numOfSeams seams, and then remove them one by one
+	 * @return buffered image of width outWidth
+	 */
 	private BufferedImage increaseImageWidth() {
 		// TODO: Implement this method, remove the exception.
 		throw new UnimplementedMethodException("increaseImageWidth");
@@ -75,8 +86,40 @@ public class SeamsCarver extends ImageProcessor {
 
 	//----------------------------- GRADIENT ----------------------------------------//
 
-	public int[][] getGradient () {
-		return null;
+
+	public int getPixelEnergy (int x, int y) {
+
+		int e1, e2;
+
+		if (y < inWidth - 1) {
+			e1 = (int) ((new Color (greyscaleImage.getRGB(x, y)).getBlue()) -
+					(new Color (greyscaleImage.getRGB(x, y + 1)).getBlue()));
+		} else {
+			e1 = (int) ((new Color (greyscaleImage.getRGB(x, y)).getBlue()) -
+					(new Color (greyscaleImage.getRGB(x, y - 1)).getBlue()));
+		}
+
+		if (x < inHeight - 1) {
+			e2 = (int) ((new Color (greyscaleImage.getRGB(x, y)).getBlue()) -
+					(new Color (greyscaleImage.getRGB(x + 1, y)).getBlue()));
+		} else {
+			e2 = (int) ((new Color (greyscaleImage.getRGB(x, y)).getBlue()) -
+					(new Color (greyscaleImage.getRGB(x - 1, y)).getBlue()));
+		}
+
+		/*
+			On principle, pixelEnergy = e1 + e2 + e3.
+			However, if we add a positive number to Integer.MAX_VALUE, we will receive a negative number.
+			Therefore we will not add e1 and e2 to the calculation in cases where e3 = Integer.MAX_VALUE
+		*/
+		int pixelEnergy;
+		if ( imageMask[x][y] ) {
+			pixelEnergy = Integer.MAX_VALUE;
+		} else {
+			pixelEnergy = e1 + e2;
+		}
+		return pixelEnergy;
 	}
 
+	//public BufferedImage forward
 }

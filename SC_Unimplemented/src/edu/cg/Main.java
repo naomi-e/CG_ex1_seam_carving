@@ -10,4 +10,6 @@ public class Main {
 		MenuWindow mw = new MenuWindow();
 		mw.setVisible(true);
 	}
+
+
 }
