@@ -162,14 +162,14 @@ public class SeamsCarver extends ImageProcessor {
 
 	}
 	// named by its definition : returns the valued difference between (x,y)'s new neighbours  that were created depending on how the seam was removed  ,
-	private long CvForCostMatrix(bufferedImage greyscaleImage,int x , int y)
+	private long CvForCostMatrix(BufferedImage greyscaleImage,int x , int y)
 	{
 
 			return Math.abs((int) ((new Color (greyscaleImage.getRGB(x+1, y)).getBlue())) - (int) ((new Color (greyscaleImage.getRGB(x-1, y)).getBlue()))) ;
 
 	}
 	// named by its definition : returns the valued difference between (x,y)'s new neighbours  that were created depending on how the seam was removed  ,
-	private long CrForCostMatrix(bufferedImage greyscaleImage,int x , int y)
+	private long CrForCostMatrix(BufferedImage greyscaleImage,int x , int y)
 	{
 
 		return Math.abs((int) ((new Color (greyscaleImage.getRGB(x+1, y)).getBlue())) - (int) ((new Color (greyscaleImage.getRGB(x-1, y)).getBlue()))) + Math.abs((int) ((new Color (greyscaleImage.getRGB(x, y-1)).getBlue())) - (int) ((new Color (greyscaleImage.getRGB(x+1, y)).getBlue())));
