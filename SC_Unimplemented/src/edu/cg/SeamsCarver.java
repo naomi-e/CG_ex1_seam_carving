@@ -3,6 +3,7 @@ package edu.cg;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 
+
 public class SeamsCarver extends ImageProcessor {
 
 	// MARK: An inner interface for functional programming.
@@ -16,7 +17,6 @@ public class SeamsCarver extends ImageProcessor {
 	private ResizeOperation resizeOp;
 	boolean[][] imageMask;
 
-	int hi = 1;
 	protected  long[][] costMatrix;// a cost matrix that contains the path to be taken to find a desired seam
 	protected BufferedImage greyscaleImage;
 
@@ -84,23 +84,23 @@ public class SeamsCarver extends ImageProcessor {
 	//----------------------------- GRADIENT ----------------------------------------//
 
 
-	public int getPixelEnergy (int x, int y) {
+	public long getPixelEnergy (int x, int y) {
 
-		int e1, e2;
+		long e1, e2, e3;
 
 		if (y < inWidth - 1) {
-			e1 = (int) ((new Color (greyscaleImage.getRGB(x, y)).getBlue()) -
+			e1 = (long) ((new Color (greyscaleImage.getRGB(x, y)).getBlue()) -
 					(new Color (greyscaleImage.getRGB(x, y + 1)).getBlue()));
 		} else {
-			e1 = (int) ((new Color (greyscaleImage.getRGB(x, y)).getBlue()) -
+			e1 = (long) ((new Color (greyscaleImage.getRGB(x, y)).getBlue()) -
 					(new Color (greyscaleImage.getRGB(x, y - 1)).getBlue()));
 		}
 
 		if (x < inHeight - 1) {
-			e2 = (int) ((new Color (greyscaleImage.getRGB(x, y)).getBlue()) -
+			e2 = (long) ((new Color (greyscaleImage.getRGB(x, y)).getBlue()) -
 					(new Color (greyscaleImage.getRGB(x + 1, y)).getBlue()));
 		} else {
-			e2 = (int) ((new Color (greyscaleImage.getRGB(x, y)).getBlue()) -
+			e2 = (long) ((new Color (greyscaleImage.getRGB(x, y)).getBlue()) -
 					(new Color (greyscaleImage.getRGB(x - 1, y)).getBlue()));
 		}
 
@@ -109,12 +109,14 @@ public class SeamsCarver extends ImageProcessor {
 			However, if we add a positive number to Integer.MAX_VALUE, we will receive a negative number.
 			Therefore we will not add e1 and e2 to the calculation in cases where e3 = Integer.MAX_VALUE
 		*/
-		int pixelEnergy;
 		if ( imageMask[x][y] ) {
-			pixelEnergy = Integer.MAX_VALUE;
+			e3 = Integer.MAX_VALUE;
 		} else {
-			pixelEnergy = e1 + e2;
+			e3 = 0;
 		}
+
+		long pixelEnergy = e1 + e2 + e3;
+
 		return pixelEnergy;
 	}
 
@@ -158,7 +160,7 @@ public class SeamsCarver extends ImageProcessor {
 	private	long ClForCostMatrix(BufferedImage greyscaleImage,int x,int y)
 	{
 
-		return Math.abs((int) ((new Color (greyscaleImage.getRGB(x+1, y)).getBlue())) - (int) ((new Color (greyscaleImage.getRGB(x-1, y)).getBlue()))) +Math.abs((int) ((new Color (greyscaleImage.getRGB(x-1, y)).getBlue()))- (int) ((new Color (greyscaleImage.getRGB(x, y-1)).getBlue())))
+		return Math.abs((int) ((new Color (greyscaleImage.getRGB(x+1, y)).getBlue())) - (int) ((new Color (greyscaleImage.getRGB(x-1, y)).getBlue()))) +Math.abs((int) ((new Color (greyscaleImage.getRGB(x-1, y)).getBlue()))- (int) ((new Color (greyscaleImage.getRGB(x, y-1)).getBlue())));
 
 	}
 	// named by its definition : returns the valued difference between (x,y)'s new neighbours  that were created depending on how the seam was removed  ,
@@ -197,7 +199,10 @@ public class SeamsCarver extends ImageProcessor {
 		}
 		else {
 			//adds the new value to the matrix acording to the difinition in the homeowork pdf
-			costMatrix[x][y]=getPixelEnergy(x, y) + minimumOfThree(costMatrix[x - 1][ y - 1]+ClForCostMatrix(greyscaleImage,x,y),costMatrix[x][y-1]+CvForCostMatrix(greyscaleImage,x,y),costMatrix[x+1][y - 1]+CrForCostMatrix(greyscaleImage,x,y)) ;
+			costMatrix[x][y]=getPixelEnergy(x, y) +
+					minimumOfThree(costMatrix[x - 1][ y - 1]+ClForCostMatrix(greyscaleImage,x,y),
+							costMatrix[x][y-1]+CvForCostMatrix(greyscaleImage,x,y),
+							costMatrix[x+1][y - 1]+CrForCostMatrix(greyscaleImage,x,y)) ;
 		}
 	}
 }
