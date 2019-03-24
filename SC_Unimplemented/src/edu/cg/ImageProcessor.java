@@ -122,8 +122,34 @@ public class ImageProcessor extends FunctioalForEachLoops {
 
 	}
 
+
+	/**
+	 * scales the image acording to the new desired size which is the this.outwidth , this.outhight
+	 * @return returns a buffered image with the new dimention
+	 */
 	public BufferedImage nearestNeighbor() {
-		// TODO: Implement this method, remove the exception.
-		throw new UnimplementedMethodException("nearestNeighbor");
+		// firstly we calculate the new aspect ratio for both x,y axis
+		//after that we will linearly map the old image into the new one
+
+		BufferedImage outputBufferedImage=  new BufferedImage(this.outWidth, this.outHeight, workingImageType);
+
+		double xAxisRatio = this.inWidth/(double)this.outWidth;
+		double yAxisRatio = this.inHeight/(double)this.outHeight;
+
+
+
+
+		//goes over each row then each column
+		for(int y=0;y<outHeight;y++)//todo: make sure starting from 1 is correct
+		{
+			for(int x=0;x<outWidth;x++)//todo: make sure starting from 1 is correct5
+			{
+				//does a linear transformation from the new desired size to the original images pixel
+				//in a way where the new pixel will get the color of the (old pixel position) * (new aspect ratio difference)
+				outputBufferedImage.setRGB(x,y,this.workingImage.getRGB((int) (xAxisRatio*x) , (int)(yAxisRatio*y)));
+				//since we are flooring the number we might get rough edges
+			}
+		}
+		return	outputBufferedImage;
 	}
 }

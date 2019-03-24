@@ -18,7 +18,9 @@ public class SeamsCarver extends ImageProcessor {
 	boolean[][] imageMask;
 
 	protected  long[][] costMatrix;// a cost matrix that contains the path to be taken to find a desired seam
-	protected BufferedImage greyscaleImage;
+	protected BufferedImage greyScaleImage; // a grey image of our original image that helps us find the pixel energy
+	protected int[][] newImageXAxisRemapperArray;//this 2d array will help us to see where the new coordinates for the image are going to be after "removing"a seam without creating a new image
+	private int numOfRemovedSeams;//the counter to how many seams we have already removed that will be used in StartValvulatingCostMatrix & so on
 
 	// TODO: Add some additional fields
 
@@ -81,9 +83,138 @@ public class SeamsCarver extends ImageProcessor {
 		throw new UnimplementedMethodException("getMaskAfterSeamCarving");
 	}
 
-	//----------------------------- GRADIENT ----------------------------------------//
+	//----------------------------- new x coordinate helper array ----------------------------------------//
 
 
+	/**
+	 * initializes the helper remmapping array that will let us remove seams without creating new images
+	 */
+	private int[][] initiateNewImageXAxisRemapper()
+	{
+
+		newImageXAxisRemapperArray=new int[this.outWidth][this.outHeight];
+		for (int x=0;x<newImageXAxisRemapperArray.length;x++)
+		{
+			for(int y =0;y<newImageXAxisRemapperArray[0].length;y++)
+			{
+				newImageXAxisRemapperArray[x][y]=x;
+			}
+		}
+		return newImageXAxisRemapperArray;
+	}
+
+	/**
+	 * the method takes advantage of the newImageXAxisRemapper array to get where the x should hae been in the original photo
+	 * returns the X coordinate that should be in the after seam carving photo (after removing seams without creating new images)
+	 */
+	private int getCorrectXPositionForPixel(int x,int y)
+	{
+		return newImageXAxisRemapperArray[x][y];
+	}
+
+
+	//todo: should this be changed, as it is , the last columns stay the same since we dont really care about them
+
+	/**
+	 * the method takes the coordination of a cell
+	 * and moves all the cells to its right 1 cell to the left in the  newImagexAxisRemapperArray
+	 * @param startShiftingColumnsFromX
+	 */
+	private void shiftRowIndecesLeft(int startShiftingColumnsFromX,int y)
+	{
+		//goes from the starting position in the row , to the end of the "current" photo weidth after removing numOfRemovedSeams
+		for(int i =startShiftingColumnsFromX;i<(inWidth-numOfRemovedSeams);i++)
+		{
+			newImageXAxisRemapperArray[i][y]=newImageXAxisRemapperArray[i+1][y];//todo: might have a problem when  numOfRemovedSeams=0
+		}
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+	///pcb:  el 3am te3malo eno bedak tem3la el shift left , 3ashan ba3de bas t'7ales te3mal eno ila2e el minimal path w i2eem el pixelem ele 3ala yameno
+	//w ba3den bedak etla2e el ma7alat le lazem etbadel feha el x coordinate bel coordinate ta3et el helper matrix
+
+
+	//---------------------------------------------cost matrix0-----------------------
+	private long[][] startCalculatingCostMatrix()
+	{
+
+		greyScaleImage= greyscale(); // this variable is mainly for finding the pixel energy
+		newImageXAxisRemapperArray = initiateNewImageXAxisRemapper();
+		costMatrix = new long[greyScaleImage.getWidth()][greyScaleImage.getHeight()];//TODO: make sure its the right size
+
+
+
+		//fills the first row with pixel energy
+		for (int x=0;x<greyScaleImage.getWidth();x++) //TODO: change this because in buffered image we shuold start from 0 and not from 1???
+		{
+			costMatrix[x][0]=getPixelEnergy(x,0); //todo: make sure the coordinates are correct
+		}
+
+		//passses over the rest of the matrix , calculating each specifics cells/pixels cost
+		for (int y = 1; y<greyScaleImage.getHeight();y++)
+		{
+			for(int x=0;x<greyScaleImage.getWidth();x++)//TODO: change this because in buffered image we shuold start from 0 and not from 1???
+			{
+				 calculateCostMatrixElement(x,y);
+			}
+		}
+
+
+		return costMatrix;
+	}
+
+
+	/**
+	 *this method is called from startCalculatingCostMatrix and calculates each specific elements in the cost matrix
+	 */
+	private void calculateCostMatrixElement(int x, int y)
+	{
+
+		//todo: mekre ketsoon , make sure this works
+		if(x==0)//if we are on the first column , thus cant have an upper left corener
+		{
+
+			costMatrix[x][y]=getPixelEnergy(x, y) + Math.min(costMatrix[x][y-1],costMatrix[x+1][y-1]);
+
+		}
+		//todo: mekre ketsoon , make sure this works
+		else if(x==greyScaleImage.getWidth())//if we are on the last column   //TODO: make sure this is right and we dont need .getwidth-1
+		{
+			costMatrix[x][y]=getPixelEnergy(x, y) + Math.min(costMatrix[x-1][y-1],costMatrix[x][y-1]);
+		}
+		else {
+			//adds the new value to the matrix acording to the difinition in the homeowork pdf
+			costMatrix[x][y]=getPixelEnergy(x, y) +
+					minimumOfThree(
+							costMatrix[x - 1][ y - 1]+ClForCostMatrix(greyScaleImage,x,y),
+							costMatrix[x][y-1]+CvForCostMatrix(greyScaleImage,x,y),
+							costMatrix[x+1][y - 1]+CrForCostMatrix(greyScaleImage,x,y)) ;
+		}
+	}
+
+	//returns the minimum number between 3 long numbers
+	private long minimumOfThree(long a,long b,long c)
+	{
+		return Math.min(a,Math.min(b,c));
+	}
+
+
+	/**
+	 * gives you the pixel energy , as it is described in the recetation #2  slide 6
+	 * calculates the "contrast"between the desired pixel and its neighbours
+	 * gives a high pixel energy if the pixel is masked (which means we dont want it to be touched)
+	 */
 	public long getPixelEnergy (int x, int y) {
 
 		long e1, e2, e3;
@@ -121,38 +252,6 @@ public class SeamsCarver extends ImageProcessor {
 	}
 
 
-	///takes a grey image, modifies the protected cost matrix and returns it,
-	///
-	private long[][] startCalculatingCostMatrix(BufferedImage greyScaleImage)
-	{
-		costMatrix = new long[greyScaleImage.getWidth()+1][greyScaleImage.getHeight()+1];//TODO: make sure its the right size
-
-		//fills the first row with pixel energy
-		for (int x=1;x<=greyScaleImage.getWidth();x++)
-		{
-			costMatrix[x][1]=getPixelEnergy(x,1);
-		}
-
-		//passses over the rest of the matrix , calculating each specifics cells/pixels cost
-		for (int y = 1; y<=greyScaleImage.getHeight();y++)
-		{
-			for(int x=1;x<=greyScaleImage.getWidth();x++)
-			{
-				 calculateCostMatrixElement(greyScaleImage,x,y);
-			}
-		}
-
-
-		return costMatrix;
-	}
-
-
-	//returns the minimum number between 3 long numbers
-	private long minimumOfThree(long a,long b,long c)
-	{
-		return Math.min(a,Math.min(b,c));
-	}
-
 	//TODO: remember there will be errors if you call this method from the first  column
 	//todo: not sure f this is the correct implementation to begin with
 
@@ -179,30 +278,13 @@ public class SeamsCarver extends ImageProcessor {
 	}
 
 
-	//changes the cost of this pixel , in the cost matrix
-	private void calculateCostMatrixElement(BufferedImage greyscaleImage,int x, int y)
+	//
+	private void backTrackingForBestSeam()
 	{
 
-		//if we are on the first column , thus cant have an upper left corener
-		//todo: mekre ketsoon , make sure this works
-		if(x==1)
-		{
 
-			costMatrix[x][y]=getPixelEnergy(x, y) + Math.min(costMatrix[x][y-1],costMatrix[x+1][y-1]);
-
-		}
-		//todo: mekre ketsoon , make sure this works
-		else if(x==greyscaleImage.getWidth())
-		{
-			costMatrix[x][y]=getPixelEnergy(x, y) + Math.min(costMatrix[x-1][y-1],costMatrix[x][y-1]);
-
-		}
-		else {
-			//adds the new value to the matrix acording to the difinition in the homeowork pdf
-			costMatrix[x][y]=getPixelEnergy(x, y) +
-					minimumOfThree(costMatrix[x - 1][ y - 1]+ClForCostMatrix(greyscaleImage,x,y),
-							costMatrix[x][y-1]+CvForCostMatrix(greyscaleImage,x,y),
-							costMatrix[x+1][y - 1]+CrForCostMatrix(greyscaleImage,x,y)) ;
-		}
 	}
+
+
+
 }
