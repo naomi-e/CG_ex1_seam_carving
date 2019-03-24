@@ -278,10 +278,11 @@ public class SeamsCarver extends ImageProcessor {
 	}
 
 
-	//
+	//todo: writing the x axis ramapper methods first
 	private void backTrackingForBestSeam()
 	{
-
+		//goal: to trace back according to the instruction in the recitation
+		//to use the shiftRowIndecesLeft    to delete from the x axis remapper array instead of the image itself
 
 	}
 
