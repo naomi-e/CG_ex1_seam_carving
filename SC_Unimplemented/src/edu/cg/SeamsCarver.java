@@ -1,6 +1,8 @@
 package edu.cg;
 
 import java.awt.*;
+import java.awt.Image;
+
 import java.awt.image.BufferedImage;
 
 
@@ -45,7 +47,7 @@ public class SeamsCarver extends ImageProcessor {
 			resizeOp = this::duplicateWorkingImage;
 
 		// TODO: You may initialize your additional fields and apply some preliminary calculations.
-		greyscaleImage = greyscale();
+		greyScaleImage = greyscale();
 
 
 		this.logger.log("preliminary calculations were ended.");
@@ -129,18 +131,6 @@ public class SeamsCarver extends ImageProcessor {
 		}
 	}
 
-
-
-
-
-
-
-
-
-
-
-
-
 	///pcb:  el 3am te3malo eno bedak tem3la el shift left , 3ashan ba3de bas t'7ales te3mal eno ila2e el minimal path w i2eem el pixelem ele 3ala yameno
 	//w ba3den bedak etla2e el ma7alat le lazem etbadel feha el x coordinate bel coordinate ta3et el helper matrix
 
@@ -169,7 +159,6 @@ public class SeamsCarver extends ImageProcessor {
 				 calculateCostMatrixElement(x,y);
 			}
 		}
-
 
 		return costMatrix;
 	}
@@ -220,26 +209,21 @@ public class SeamsCarver extends ImageProcessor {
 		long e1, e2, e3;
 
 		if (y < inWidth - 1) {
-			e1 = (long) ((new Color (greyscaleImage.getRGB(x, y)).getBlue()) -
-					(new Color (greyscaleImage.getRGB(x, y + 1)).getBlue()));
+			e1 = (long) ((new Color (greyScaleImage.getRGB(x, y)).getBlue()) -
+					(new Color (greyScaleImage.getRGB(x, y + 1)).getBlue()));
 		} else {
-			e1 = (long) ((new Color (greyscaleImage.getRGB(x, y)).getBlue()) -
-					(new Color (greyscaleImage.getRGB(x, y - 1)).getBlue()));
+			e1 = (long) ((new Color (greyScaleImage.getRGB(x, y)).getBlue()) -
+					(new Color (greyScaleImage.getRGB(x, y - 1)).getBlue()));
 		}
 
 		if (x < inHeight - 1) {
-			e2 = (long) ((new Color (greyscaleImage.getRGB(x, y)).getBlue()) -
-					(new Color (greyscaleImage.getRGB(x + 1, y)).getBlue()));
+			e2 = (long) ((new Color (greyScaleImage.getRGB(x, y)).getBlue()) -
+					(new Color (greyScaleImage.getRGB(x + 1, y)).getBlue()));
 		} else {
-			e2 = (long) ((new Color (greyscaleImage.getRGB(x, y)).getBlue()) -
-					(new Color (greyscaleImage.getRGB(x - 1, y)).getBlue()));
+			e2 = (long) ((new Color (greyScaleImage.getRGB(x, y)).getBlue()) -
+					(new Color (greyScaleImage.getRGB(x - 1, y)).getBlue()));
 		}
 
-		/*
-			On principle, pixelEnergy = e1 + e2 + e3.
-			However, if we add a positive number to Integer.MAX_VALUE, we will receive a negative number.
-			Therefore we will not add e1 and e2 to the calculation in cases where e3 = Integer.MAX_VALUE
-		*/
 		if ( imageMask[x][y] ) {
 			e3 = Integer.MAX_VALUE;
 		} else {
@@ -283,6 +267,25 @@ public class SeamsCarver extends ImageProcessor {
 	{
 		//goal: to trace back according to the instruction in the recitation
 		//to use the shiftRowIndecesLeft    to delete from the x axis remapper array instead of the image itself
+
+		long lowestValueInCostMatrixForRowI;
+		int yValueOfLowestInCM = -1;
+
+		for(int i = inHeight-1; i >=0 ; i--) {
+
+			lowestValueInCostMatrixForRowI = Long.MAX_VALUE;
+			//find the lowest value in the row
+			for(int j = 0; j < inWidth; j++) {
+				if(costMatrix[i][j] < lowestValueInCostMatrixForRowI){
+					lowestValueInCostMatrixForRowI = costMatrix[i][j];
+					yValueOfLowestInCM = j;
+				}
+			}
+			//shift all values after yValueOfLowestInCM
+			for(int k = yValueOfLowestInCM; k < newImageXAxisRemapperArray.length; k++) {
+				newImageXAxisRemapperArray[i][k] = newImageXAxisRemapperArray[i][k+1]; //shift values left
+			}
+		}
 
 	}
 
