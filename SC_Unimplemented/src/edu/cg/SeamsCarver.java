@@ -25,7 +25,8 @@ public class SeamsCarver extends ImageProcessor {
 	private int numOfRemovedSeams;//the counter to how many seams we have already removed that will be used in StartValvulatingCostMatrix & so on
 	private int[][] greyScaleArray;
 	protected int[][] backTrackingArray;
-
+	protected boolean[][] helpingMask; //important , remember the helping mask is transpose to the actual mask matrix
+	protected long[][] pixelEnergyArray;
 
 
 
@@ -91,6 +92,32 @@ public class SeamsCarver extends ImageProcessor {
 		}
 		return greyScaleArray;
 	}
+	private boolean[][] getHelpingMask()
+	{
+		boolean[][] helping = new boolean[inWidth][inHeight];
+		for(int y=0;y<inHeight;y++)
+		{
+			for(int x=0;x<inWidth;x++)
+			{
+				helping[x][y]=imageMask[y][x];
+			}
+		}
+		return helping;
+	}
+
+	private long[][] getPixelEnergyArray()
+	{
+		long[][] energyArray= new long[inWidth-numOfRemovedSeams][inHeight-numOfRemovedSeams];
+
+		for(int y = 0; y<energyArray[0].length;y++)
+		{
+			for(int x=0;x<energyArray.length;x++)
+			{
+				energyArray[x][y]=getPixelEnergy(x,y);
+			}
+		}
+		return energyArray;
+	}
 
 
 	//-----------------------------------------------------------------------------------
@@ -120,7 +147,8 @@ public class SeamsCarver extends ImageProcessor {
 		// TODO: You may initialize your additional fields and apply some preliminary calculations.
 		greyScaleImage = greyscale();
 		greyScaleArray=getGreyScaleArray(greyScaleImage);
-
+		xAxisRemapperArray = initiateXAxisRemapper();
+		helpingMask=getHelpingMask();//this is the mask that gets shifted to the left the removal of each seam
 
 		this.logger.log("preliminary calculations were ended.");
 	}
@@ -142,7 +170,8 @@ public class SeamsCarver extends ImageProcessor {
 	 * @return the reduced image
 	 */
 	private BufferedImage reduceImageWidth() {
-		xAxisRemapperArray = initiateXAxisRemapper();
+
+
 		int reduceImageBy = (inWidth - outWidth);
 
 		//removing one seam at a time
@@ -184,24 +213,35 @@ public class SeamsCarver extends ImageProcessor {
 
 	//---------------------------------------------cost matrix0-----------------------
 	private long[][] startCalculatingCostMatrix() {
-		this.logger.log("started Calculating Cost Matrix For Seam"+(numOfRemovedSeams+1));
+		logger.log("started Calculating Cost Matrix For Seam: "+(numOfRemovedSeams+1));
 
 
 
 
 		costMatrix = new long[inWidth-numOfRemovedSeams][inHeight];
 		backTrackingArray=new int[inWidth-numOfRemovedSeams][inHeight];
-
+		pixelEnergyArray=getPixelEnergyArray();
 
 		int x;
 		//fills the first row with pixel energy & takes in concidiration the "already removed" pixels
-		for ( x= 0; x < costMatrix.length; x++) //TODO: change this because in buffered image we shuold start from 0 and not from 1???  ***this todo applies to everything in this method****
-		{
-			costMatrix[x][0] = getPixelEnergy(x, 0);
-		}
+		//for (x = 0; x < costMatrix.length; x++) //TODO: change this because in buffered image we shuold start from 0 and not from 1???  ***this todo applies to everything in this method****
+		//{
+		//	//costMatrix[x][0] = getPixelEnergy(x, 0);
+		//	costMatrix[x][y] = pixelEnergyArray[x][y];
+		//}
 
+
+
+	/*	for(int y = 0 ;y<costMatrix[0].length;y++) {
+			for (x = 0; x < costMatrix.length; x++) //TODO: change this because in buffered image we shuold start from 0 and not from 1???  ***this todo applies to everything in this method****
+			{
+
+				costMatrix[x][y] = pixelEnergyArray[x][y];
+			}
+		}
+*/
 		//passses over the rest of the matrix , calculating each specifics cells/pixels cost
-		for (int y = 1; y < costMatrix[0].length; y++)
+		for (int y = 0; y < costMatrix[0].length; y++)
 		{
 			for (x = 0; x < costMatrix.length; x++)
 			{
@@ -213,11 +253,19 @@ public class SeamsCarver extends ImageProcessor {
 		//after finishing the cost array , we start tracing back
 
 		//transposeArray(costMatrix);
+
+
+	/*
+
 		try {
 			writeCostMatixToFile();
 		}
 		catch (Exception e)
 		{}
+
+
+		*/
+
 		return costMatrix;
 	}
 
@@ -228,37 +276,41 @@ public class SeamsCarver extends ImageProcessor {
 	private void calculateCostMatrixElement(int x, int y) {
 
 
-		costMatrix[x][y] = getPixelEnergy(x, y);
+		//costMatrix[x][y] = getPixelEnergy(x, y);
+		//instead of going to the cost matrix each element at a time , i initilied the cost matrix to the pixel energy from the start calculate cost matrix
 
 		//this method , should not be called from the first row from the cost matrix
-		long cL,cV,cR;
+
+		costMatrix[x][y]=getPixelEnergy(x,y);
+
+		if(y>0) {
+			long cL, cV, cR;
 
 
-		//todo: mekre ketsoon , make sure this works
-		if (x == 0)//if we are on the first column , thus cant have an upper left corener
-		{
-			cV=costMatrix[x][y - 1]+CvForCostMatrix(x,y);
-			cR= costMatrix[x + 1][y - 1]+CrForCostMatrix(x,y);
-			cL=Integer.MAX_VALUE;
+			//todo: mekre ketsoon , make sure this works
+			if (x == 0)//if we are on the first column , thus cant have an upper left corener
+			{
+				cV = costMatrix[x][y - 1] + CvForCostMatrix(x, y);
+				cR = costMatrix[x + 1][y - 1] + CrForCostMatrix(x, y);
+				cL = Integer.MAX_VALUE;
+			}
+			//todo: mekre ketsoon , make sure this works
+			else if (x == costMatrix.length - 1)//if we are on the last column   //TODO: make sure this is right and we dont need .getwidth-1
+			{
+				cL = costMatrix[x - 1][y - 1] + ClForCostMatrix(x, y);
+				cV = costMatrix[x][y - 1] + CvForCostMatrix(x, y);
+				cR = Integer.MAX_VALUE;
+			} else {
+				//adds the new value to the matrix acording to the difinition in the homeowork pdf
+
+				cL = costMatrix[x - 1][y - 1] + ClForCostMatrix(x, y);
+				cV = costMatrix[x][y - 1] + CvForCostMatrix(x, y);
+				cR = costMatrix[x + 1][y - 1] + CrForCostMatrix(x, y);
+			}
+
+			costMatrix[x][y] += minimumOfThree(cL, cV, cR);
+			backTrackingArray[x][y] = backTrackingArrayFiller(costMatrix[x][y], x, cL, cR);
 		}
-		//todo: mekre ketsoon , make sure this works
-		else if (x == costMatrix.length-1)//if we are on the last column   //TODO: make sure this is right and we dont need .getwidth-1
-		{
-			cL=costMatrix[x - 1][y - 1]+ClForCostMatrix(x,y);
-			cV=costMatrix[x][y - 1]+CvForCostMatrix(x,y);
-			cR=Integer.MAX_VALUE;
-		}
-		else {
-			//adds the new value to the matrix acording to the difinition in the homeowork pdf
-
-			cL=	costMatrix[x - 1][y - 1] + ClForCostMatrix(x, y);
-			cV=	costMatrix[x][y - 1] + CvForCostMatrix(x, y);
-			cR=	costMatrix[x + 1][y - 1] + CrForCostMatrix( x, y);
-		}
-
-		costMatrix[x][y] += minimumOfThree(cL,cV,cR);
-		backTrackingArray[x][y]=backTrackingArrayFiller(costMatrix[x][y],x,cL,cR);
-
 
 	}
 
@@ -295,7 +347,7 @@ public class SeamsCarver extends ImageProcessor {
 
 		long e1, e2, e3;
 
-		int remappedX=xAxisRemapper(x,y);
+		//int remappedX=xAxisRemapper(x,y);
 
 
 
@@ -323,21 +375,26 @@ public class SeamsCarver extends ImageProcessor {
 		*/
 
 		//energy in columns
-		if (remappedX < inWidth - 1)//as long as we are not in the last column (remember we need to remap the current x we have in the newly resized image, and check its coordinates in the original image)
+		if (x < greyScaleArray.length - 1)//as long as we are not in the last column (remember we need to remap the current x we have in the newly resized image, and check its coordinates in the original image)
 		{
-			e1= Math.abs( greyScaleArray[remappedX][y] - greyScaleArray[xAxisRemapper(x+1,y)][y]);
+			//e1= Math.abs( greyScaleArray[remappedX][y] - greyScaleArray[xAxisRemapper(x+1,y)][y]);
+			e1= Math.abs( greyScaleArray[x][y] - greyScaleArray[x+1][y]);
+
+
 		} else {
-			e1=Math.abs( greyScaleArray[remappedX][y] - greyScaleArray[xAxisRemapper(x-1,y)][y]);
+			//e1=Math.abs( greyScaleArray[x][y] - greyScaleArray[xAxisRemapper(x-1,y)][y]);
+			e1=Math.abs( greyScaleArray[x][y] - greyScaleArray[x-1][y]);
 		}
 
 
 		//energy in rows
-		if (y < inHeight - 1)
+		if (y < greyScaleArray[0].length - 1)
 		{
-			e2= Math.abs( greyScaleArray[remappedX][y] - greyScaleArray[remappedX][y+1]);
-
+			//e2= Math.abs( greyScaleArray[remappedX][y] - greyScaleArray[remappedX][y+1]);
+			e2= Math.abs( greyScaleArray[x][y] - greyScaleArray[x][y+1]);
 		} else {
-			e2=Math.abs( greyScaleArray[remappedX][y] - greyScaleArray[remappedX][y-1]);
+			//e2=Math.abs( greyScaleArray[remappedX][y] - greyScaleArray[remappedX][y-1]);
+			e2=Math.abs( greyScaleArray[x][y] - greyScaleArray[x][y-1]);
 		}
 
 		/*
@@ -347,7 +404,8 @@ public class SeamsCarver extends ImageProcessor {
 		*/
 
 
-		if (imageMask[y][remappedX]) {
+		//if (imageMask[y][remappedX]) {
+		if (helpingMask[x][y]) {
 			//remember in the array they submitted the rows and columns are different than yours
 			e3 = Integer.MAX_VALUE;
 		} else {
@@ -373,12 +431,17 @@ public class SeamsCarver extends ImageProcessor {
 			cl = 255; //if its a border then count it as important data
 		} else // if in the middle of the matrix
 		{
-			cl = Math.abs(greyScaleArray[xAxisRemapper(x + 1, y)][y] - greyScaleArray[xAxisRemapper(x - 1,y)][y]); // get the neighbours
+			//cl = Math.abs(greyScaleArray[xAxisRemapper(x + 1, y)][y] - greyScaleArray[xAxisRemapper(x - 1,y)][y]); // get the neighbours
+			cl = Math.abs(greyScaleArray[x + 1][y] - greyScaleArray[x - 1][y]); // get the neighbours
+
 		}
 
 		if (x > 0) //if we are not on the first column
 		{
-			cl+= Math.abs( greyScaleArray[xAxisRemapper(x-1,y)][y] -  greyScaleArray[xAxisRemapper(x,y-1)][y-1]);
+			//cl+= Math.abs( greyScaleArray[xAxisRemapper(x-1,y)][y] -  greyScaleArray[xAxisRemapper(x,y-1)][y-1]);
+			cl+= Math.abs( greyScaleArray[x-1][y] -  greyScaleArray[x][y-1]);
+
+
 		}
 
 
@@ -395,7 +458,9 @@ public class SeamsCarver extends ImageProcessor {
 		}
 		else // if in the middle of the matrix
 		{
-			cv=Math.abs(greyScaleArray[xAxisRemapper(x + 1, y)][y] - greyScaleArray[xAxisRemapper(x - 1,y)][y]);
+			//cv=Math.abs(greyScaleArray[xAxisRemapper(x + 1, y)][y] - greyScaleArray[xAxisRemapper(x - 1,y)][y]);
+			cv=Math.abs(greyScaleArray[x + 1][y] - greyScaleArray[x - 1][y]);
+
 		}
 		return cv;
 		//;;
@@ -411,12 +476,16 @@ public class SeamsCarver extends ImageProcessor {
 		}
 		else // if in the middle of the matrix
 		{
-			cr=Math.abs(greyScaleArray[xAxisRemapper(x + 1, y)][y] - greyScaleArray[xAxisRemapper(x - 1,y)][y]);
+			//cr=Math.abs(greyScaleArray[xAxisRemapper(x + 1, y)][y] - greyScaleArray[xAxisRemapper(x - 1,y)][y]);
+			cr=Math.abs(greyScaleArray[x + 1][y] - greyScaleArray[x - 1][y]);
+
 		}
 
 		if(x<(inWidth-(numOfRemovedSeams+1)))
 		{
-			cr += Math.abs(greyScaleArray[xAxisRemapper(x,y-1)][y-1] - greyScaleArray[xAxisRemapper(x+1,y)][y]);
+		//	cr += Math.abs(greyScaleArray[xAxisRemapper(x,y-1)][y-1] - greyScaleArray[xAxisRemapper(x+1,y)][y]);
+			cr += Math.abs(greyScaleArray[y-1][y-1] - greyScaleArray[x+1][y]);
+
 		}
 		return cr;
 
@@ -430,7 +499,7 @@ public class SeamsCarver extends ImageProcessor {
 
 
 		this.logger.log("started Backtracking For Seam"+(numOfRemovedSeams+1));
-		transposeArray(costMatrix);
+		//transposeArray(costMatrix);
 		int x = getBackTrackingStartingPositionColumn(costMatrix);//the x is currently the starting position for the back tracking
 		int y = costMatrix[0].length - 1;// the y is the last row
 
@@ -577,6 +646,8 @@ public class SeamsCarver extends ImageProcessor {
 		for (int i = startShiftingColumnsFromX; i < (inWidth - (numOfRemovedSeams + 1)); i++)//todo: should the -1 be there???
 		{
 			xAxisRemapperArray[i][y] = xAxisRemapperArray[i + 1][y];//todo: might have a problem when  numOfRemovedSeams=0
+			greyScaleArray[i][y]=greyScaleArray[i+1][y];
+			helpingMask[i][y]=helpingMask[i+1][y];
 		}
 
 
@@ -607,30 +678,3 @@ public class SeamsCarver extends ImageProcessor {
 	}
 
 }
-/*
-	private void backTrackingForBestSeam2()
-	{
-		//goal: to trace back according to the instruction in the recitation
-		//to use the shiftRowIndecesLeft    to delete from the x axis remapper array instead of the image itself
-
-		long lowestValueInCostMatrixForRowI;
-		int yValueOfLowestInCM = -1;
-
-		for(int i = inHeight-1; i >=0 ; i--) {
-
-			lowestValueInCostMatrixForRowI = Long.MAX_VALUE;
-			//find the lowest value in the row
-			for(int j = 0; j < inWidth; j++) {
-				if(costMatrix[i][j] < lowestValueInCostMatrixForRowI){
-					lowestValueInCostMatrixForRowI = costMatrix[i][j];
-					yValueOfLowestInCM = j;
-				}
-			}
-			//shift all values after yValueOfLowestInCM
-			for(int k = yValueOfLowestInCM; k < xAxisRemapperArray.length; k++) {
-				xAxisRemapperArray[i][k] = xAxisRemapperArray[i][k+1]; //shift values left
-			}
-		}
-
-	}
-*/
