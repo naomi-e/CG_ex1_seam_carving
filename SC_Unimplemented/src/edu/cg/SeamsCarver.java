@@ -398,6 +398,7 @@ public class SeamsCarver extends ImageProcessor {
 			cv=Math.abs(greyScaleArray[xAxisRemapper(x + 1, y)][y] - greyScaleArray[xAxisRemapper(x - 1,y)][y]);
 		}
 		return cv;
+		//;;
 	}
 
 	// named by its definition : returns the valued difference between original images (x,y)'s new neighbours  that were created depending on how the seam was removed  ,
