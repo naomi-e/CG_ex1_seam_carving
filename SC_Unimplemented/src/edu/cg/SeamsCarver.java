@@ -1,8 +1,8 @@
 package edu.cg;
 
 import java.awt.*;
-import java.awt.Image;
-
+//import java.awt.font.FontRenderContext;
+//import java.awt.Image;
 import java.awt.image.BufferedImage;
 
 
@@ -85,55 +85,6 @@ public class SeamsCarver extends ImageProcessor {
 		throw new UnimplementedMethodException("getMaskAfterSeamCarving");
 	}
 
-	//----------------------------- new x coordinate helper array ----------------------------------------//
-
-
-	/**
-	 * initializes the helper remmapping array that will let us remove seams without creating new images
-	 */
-	private int[][] initiateNewImageXAxisRemapper()
-	{
-
-		newImageXAxisRemapperArray=new int[this.outWidth][this.outHeight];
-		for (int x=0;x<newImageXAxisRemapperArray.length;x++)
-		{
-			for(int y =0;y<newImageXAxisRemapperArray[0].length;y++)
-			{
-				newImageXAxisRemapperArray[x][y]=x;
-			}
-		}
-		return newImageXAxisRemapperArray;
-	}
-
-	/**
-	 * the method takes advantage of the newImageXAxisRemapper array to get where the x should hae been in the original photo
-	 * returns the X coordinate that should be in the after seam carving photo (after removing seams without creating new images)
-	 */
-	private int getCorrectXPositionForPixel(int x,int y)
-	{
-		return newImageXAxisRemapperArray[x][y];
-	}
-
-
-	//todo: should this be changed, as it is , the last columns stay the same since we dont really care about them
-
-	/**
-	 * the method takes the coordination of a cell
-	 * and moves all the cells to its right 1 cell to the left in the  newImagexAxisRemapperArray
-	 * @param startShiftingColumnsFromX
-	 */
-	private void shiftRowIndecesLeft(int startShiftingColumnsFromX,int y)
-	{
-		//goes from the starting position in the row , to the end of the "current" photo weidth after removing numOfRemovedSeams
-		for(int i =startShiftingColumnsFromX;i<(inWidth-numOfRemovedSeams);i++)
-		{
-			newImageXAxisRemapperArray[i][y]=newImageXAxisRemapperArray[i+1][y];//todo: might have a problem when  numOfRemovedSeams=0
-		}
-	}
-
-	///pcb:  el 3am te3malo eno bedak tem3la el shift left , 3ashan ba3de bas t'7ales te3mal eno ila2e el minimal path w i2eem el pixelem ele 3ala yameno
-	//w ba3den bedak etla2e el ma7alat le lazem etbadel feha el x coordinate bel coordinate ta3et el helper matrix
-
 
 	//---------------------------------------------cost matrix0-----------------------
 	private long[][] startCalculatingCostMatrix()
@@ -160,6 +111,12 @@ public class SeamsCarver extends ImageProcessor {
 			}
 		}
 
+
+
+
+		//after finishing the cost array , we start tracing back
+
+
 		return costMatrix;
 	}
 
@@ -169,6 +126,8 @@ public class SeamsCarver extends ImageProcessor {
 	 */
 	private void calculateCostMatrixElement(int x, int y)
 	{
+		//this method , should not be called from the first row from the cost matrix
+
 
 		//todo: mekre ketsoon , make sure this works
 		if(x==0)//if we are on the first column , thus cant have an upper left corener
@@ -224,6 +183,11 @@ public class SeamsCarver extends ImageProcessor {
 					(new Color (greyScaleImage.getRGB(x - 1, y)).getBlue()));
 		}
 
+		/*
+			On principle, pixelEnergy = e1 + e2 + e3.
+			However, if we add a positive number to Integer.MAX_VALUE, we will receive a negative number.
+			Therefore we will not add e1 and e2 to the calculation in cases where e3 = Integer.MAX_VALUE
+		*/
 		if ( imageMask[x][y] ) {
 			e3 = Integer.MAX_VALUE;
 		} else {
@@ -262,8 +226,143 @@ public class SeamsCarver extends ImageProcessor {
 	}
 
 
-	//todo: writing the x axis ramapper methods first
-	private void backTrackingForBestSeam()
+
+	//------------------------------------back tracking---------------------------------------
+
+	private void backTrackingForBestSeam(long[][] costMatrix) {
+		int x = getBackTrackingStartingPositionColumn(costMatrix);//the x is currently the starting position for the back tracking
+		int y = costMatrix[0].length - 1;// the y is the last row
+
+		for (; y > 0; y--)//todo: review this part , check mekre ketson
+		{
+			shiftRowIndecesLeft(x,y);//shifts the columns in the helping array , starting the shift from the x position of the y row
+
+			//gets x position for the row above it
+			x=getBackTrackingPreviousRowXPositionForShiftRowLeft(x,y,costMatrix);
+		}
+
+
+
+		//goal: to trace back according to the instruction in the recitation
+		//to use the shiftRowIndecesLeft    to delete from the x axis remapper array instead of the image itself
+
+	}
+
+	/**gives you the first cell where we should start back tracking from
+	 * this will be the cell from the lowers row
+	 */
+	private int getBackTrackingStartingPositionColumn(long[][] costMatrix)
+	{
+		long min=Long.MAX_VALUE;
+		int minPosition=0;
+
+
+		//you dont need to check the commplete last row in the cost matrix, you need you only need to check the length of the current picture
+		//and the current picture might be already shortened , and is shorter than the original
+		for(int x=0;x<costMatrix.length - numOfRemovedSeams ;x++)
+		{
+			if(costMatrix[x][costMatrix[0].length-1] <min)//todo: make sure that the -1 is actually correct
+			{
+				min=costMatrix[x][costMatrix[0].length-1];
+				minPosition=x;
+			}
+		}
+
+		return minPosition;
+	}
+
+
+	/**
+	 * this method is called in each step going upwards in the cost matrix in backTrackingForBestSeam method
+	 * it will return the x that we need to path through in the higher row while going upwards
+	 * we will use the x position to shift left all the cells that are right to it in the newImageXAxisRemapperArray
+	 * @return   the column of which we should shift left in the upper row ///todo: change this explnation
+	 */
+	private int getBackTrackingPreviousRowXPositionForShiftRowLeft(int x,int currentRowY,long[][] costMatrix)
+	{
+		int previousRowX;
+		long currentCostMatrixCell = costMatrix[x][currentRowY];
+
+		if( //middle lane
+				currentCostMatrixCell == getPixelEnergy(x,currentRowY) + costMatrix[x][currentRowY-1] +
+						CvForCostMatrix(greyScaleImage,x,currentRowY) )
+		{
+			previousRowX=x;
+		}
+		else if(currentCostMatrixCell ==  getPixelEnergy(x,currentRowY) +costMatrix[x-1][currentRowY-1] +ClForCostMatrix(greyScaleImage,x,currentRowY))
+		{
+			previousRowX=x-1;
+		}
+		else
+		{
+			previousRowX=x+1;
+		}
+
+		return previousRowX;
+
+
+	}
+
+
+
+
+	//----------------------------- new x coordinate helper array ----------------------------------------//
+
+
+	/**
+	 * initializes the helper remmapping array that will let us remove seams without creating new images
+	 */
+	private int[][] initiateNewImageXAxisRemapper()
+	{
+
+		newImageXAxisRemapperArray=new int[this.outWidth][this.outHeight];
+		for (int x=0;x<newImageXAxisRemapperArray.length;x++)
+		{
+			for(int y =0;y<newImageXAxisRemapperArray[0].length;y++)
+			{
+				newImageXAxisRemapperArray[x][y]=x;
+			}
+		}
+		return newImageXAxisRemapperArray;
+	}
+
+	/**
+	 * the method takes advantage of the newImageXAxisRemapper array to get where the x should hae been in the original photo
+	 * returns the X coordinate that should be in the after seam carving photo (after removing seams without creating new images)
+	 */
+	private int getCorrectXPositionForPixel(int x,int y)
+	{
+		return newImageXAxisRemapperArray[x][y];
+	}
+
+
+	//todo: should this be changed, as it is , the last columns stay the same since we dont really care about them
+
+	/**
+	 * the method takes the coordination of a cell
+	 * and moves all the cells to its right 1 cell to the left in the  newImagexAxisRemapperArray
+	 * @param startShiftingColumnsFromX
+	 */
+	private void shiftRowIndecesLeft(int startShiftingColumnsFromX,int y)
+	{
+		//goes from the starting position in the row , to the end of the "current" photo weidth after removing numOfRemovedSeams
+		for(int i =startShiftingColumnsFromX;i<(inWidth-(numOfRemovedSeams+1));i++)//todo: should the -1 be there???
+		{
+			newImageXAxisRemapperArray[i][y]=newImageXAxisRemapperArray[i+1][y];//todo: might have a problem when  numOfRemovedSeams=0
+		}
+
+
+		//todo: should this be changed, as it is , the last columns stay the same since we dont really care about them
+
+	}
+
+
+
+
+
+}
+/*
+	private void backTrackingForBestSeam2()
 	{
 		//goal: to trace back according to the instruction in the recitation
 		//to use the shiftRowIndecesLeft    to delete from the x axis remapper array instead of the image itself
@@ -288,7 +387,4 @@ public class SeamsCarver extends ImageProcessor {
 		}
 
 	}
-
-
-
-}
+*/
