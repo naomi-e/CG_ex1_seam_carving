@@ -192,11 +192,11 @@ public class SeamsCarver extends ImageProcessor {
 		//energy in columns
 		if (remappedX < inWidth - 1)//as long as we are not in the last column (remember we need to remap the current x we have in the newly resized image, and check its coordinates in the original image)
 		{
-			e1 = (long) ((new Color(greyScaleImage.getRGB(remappedX, y)).getBlue()) -
-					(new Color(greyScaleImage.getRGB(xAxisRemapper(x+1,y), y)).getBlue()));
+			e1 = Math.abs( ((new Color(greyScaleImage.getRGB(remappedX, y)).getBlue()) -
+					(new Color(greyScaleImage.getRGB(xAxisRemapper(x+1,y), y)).getBlue())));
 		} else {
-			e1 = (long) ((new Color(greyScaleImage.getRGB(remappedX, y)).getBlue()) -
-					(new Color(greyScaleImage.getRGB(xAxisRemapper(x-1,y), y)).getBlue()));
+			e1 = Math.abs( ((new Color(greyScaleImage.getRGB(remappedX, y)).getBlue()) -
+					(new Color(greyScaleImage.getRGB(xAxisRemapper(x-1,y), y)).getBlue())));
 		}
 
 
