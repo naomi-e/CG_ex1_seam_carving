@@ -54,6 +54,8 @@ public class ActionsController extends JPanel {
 	private JButton addAndGetButton(String btnName, Runnable action) {
 		JButton btn = new JButton(btnName);
 		btn.addActionListener(e -> {
+
+
 			try {
 				action.run();
 			} catch (Exception ex) {

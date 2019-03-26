@@ -73,8 +73,9 @@ public class ImageWindow extends JFrame {
 		try {
 			ImageIO.write(img, "png", file);
 			menuWindow.log("File: " + file.getName() + ".png has been saved.");
-		} catch (IOException e) {
-			menuWindow.log("Failed to save image: " + getTitle()); 
+		}
+		catch (IOException e) {
+			menuWindow.log("Failed to save image: " + getTitle());
 			JOptionPane.showMessageDialog(this, "Can't save file!", "Error", JOptionPane.ERROR_MESSAGE);
 		}
 	}
