@@ -281,8 +281,9 @@ public class SeamsCarver extends ImageProcessor {
 
 		//this method , should not be called from the first row from the cost matrix
 
-		costMatrix[x][y]=getPixelEnergy(x,y);
 
+		costMatrix[x][y]=getPixelEnergy(x,y);
+		long tempEnergy=costMatrix[x][y];
 		if(y>0) {
 			long cL, cV, cR;
 
@@ -309,7 +310,7 @@ public class SeamsCarver extends ImageProcessor {
 			}
 
 			costMatrix[x][y] += minimumOfThree(cL, cV, cR);
-			backTrackingArray[x][y] = backTrackingArrayFiller(costMatrix[x][y], x, cL, cR);
+			backTrackingArray[x][y] = backTrackingArrayFiller(costMatrix[x][y], x, cL, cR,tempEnergy);
 		}
 
 	}
@@ -318,11 +319,11 @@ public class SeamsCarver extends ImageProcessor {
 	 * called from calculate cost matrix element, takes the element of the cost matrix, its position , and its neighbour , and returns to which x it should go when it back trakcs
 	 * @return
 	 */
-	private int backTrackingArrayFiller(long costMatrixElement,int xPosition,long cL,long cR)
+	private int backTrackingArrayFiller(long costMatrixElement,int xPosition,long cL,long cR,long tempEnergy)
 	{
-		if (xPosition > 0 && costMatrixElement == cL) {
+		if (xPosition > 0 && costMatrixElement == (cL+tempEnergy)) {
 			return xPosition - 1;
-		} else if (xPosition < (inWidth-numOfRemovedSeams) && costMatrixElement == cR) {
+		} else if (xPosition < (inWidth-numOfRemovedSeams) && costMatrixElement == (cR+tempEnergy)) {
 			return xPosition + 1;
 		}
 		return xPosition;

@@ -56,8 +56,7 @@ public class ActionsController extends JPanel {
 		btn.addActionListener(e -> {
 
 
-            action.run();
-                /*
+
 			try {
 				action.run();
 			} catch (Exception ex) {
@@ -65,7 +64,7 @@ public class ActionsController extends JPanel {
 				logger.log(msg);
 				JOptionPane.showMessageDialog(mainComponent, msg, "Error", JOptionPane.ERROR_MESSAGE);
 			}
-			    */
+
 
 		});
 		btn.setEnabled(false);
