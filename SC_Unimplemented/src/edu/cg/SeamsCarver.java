@@ -4,7 +4,6 @@ import java.awt.*;
 //import java.awt.font.FontRenderContext;
 //import java.awt.Image;
 import java.awt.image.BufferedImage;
-import java.nio.Buffer;
 
 
 public class SeamsCarver extends ImageProcessor {
@@ -122,7 +121,7 @@ public class SeamsCarver extends ImageProcessor {
 		}
 
 		//passses over the rest of the matrix , calculating each specifics cells/pixels cost
-		for (int y = 1; y < greyScaleImage.getHeight(); y++)
+		for (int y = 1; y < costMatrix[0].length; y++)
 		{
 			for (x = 0; x < costMatrix.length; x++)
 			{
@@ -143,7 +142,7 @@ public class SeamsCarver extends ImageProcessor {
 	 */
 	private void calculateCostMatrixElement(int x, int y) {
 		//this method , should not be called from the first row from the cost matrix
-        long isNegative;//todo: remove this, its for checking
+
 
 		//todo: mekre ketsoon , make sure this works
 		if (x == 0)//if we are on the first column , thus cant have an upper left corener
@@ -166,8 +165,7 @@ public class SeamsCarver extends ImageProcessor {
 							costMatrix[x + 1][y - 1] + CrForCostMatrix(greyScaleImage, x, y));
 		}
 
-        isNegative=costMatrix[x][y];
-		isNegative=isNegative;
+
 
 	}
 
@@ -264,7 +262,7 @@ public class SeamsCarver extends ImageProcessor {
 			shiftRowIndecesLeft(x, y);//shifts the columns in the helping array , starting the shift from the x position of the y row
 
 			//gets x position for the row above it
-			x = getBackTrackingPreviousRowXPositionForShiftRowLeft(x, y, costMatrix);
+			x = getBackTrackedColumnFor(x, y, costMatrix);
 		}
 
 
@@ -284,7 +282,7 @@ public class SeamsCarver extends ImageProcessor {
 
 		//you dont need to check the commplete last row in the cost matrix, you need you only need to check the length of the current picture
 		//and the current picture might be already shortened , and is shorter than the original
-		for (int x = 0; x < costMatrix.length - numOfRemovedSeams; x++) {
+		for (int x = 0; x < costMatrix.length; x++) {
 			if (costMatrix[x][costMatrix[0].length - 1] < min)//todo: make sure that the -1 is actually correct
 			{
 				min = costMatrix[x][costMatrix[0].length - 1];
@@ -301,21 +299,56 @@ public class SeamsCarver extends ImageProcessor {
 	 * it will return the x that we need to path through in the higher row while going upwards
 	 * we will use the x position to shift left all the cells that are right to it in the xAxisRemapperArray
 	 *
+	 * previously: getBackTrackingPreviousRowXPositionForShiftRowLeft
+	 *
 	 * @return the column of which we should shift left in the upper row ///todo: change this explnation
 	 */
-	private int getBackTrackingPreviousRowXPositionForShiftRowLeft(int x, int currentRowY, long[][] costMatrix) {
+	private int getBackTrackedColumnFor(int x, int currentRowY, long[][] costMatrix) {
 		int previousRowX;
 		long currentCostMatrixCell = costMatrix[x][currentRowY];
 
-		if ( //middle lane
-				currentCostMatrixCell == getPixelEnergy(x, currentRowY) + costMatrix[x][currentRowY - 1] +
-						CvForCostMatrix(greyScaleImage, x, currentRowY)) {
-			previousRowX = x;
-		} else if (currentCostMatrixCell == getPixelEnergy(x, currentRowY) + costMatrix[x - 1][currentRowY - 1] + ClForCostMatrix(greyScaleImage, x, currentRowY)) {
-			previousRowX = x - 1;
-		} else {
-			previousRowX = x + 1;
-		}
+
+		//pcb: el mohskele he lama bakon b2a'7er column se33etha anu sh'7enem bedo i3mal
+
+       // currentCostMatrixCell=
+
+        //todo: this needs rechecking
+        if(x==0)//if we are on the first column   then we have only 2 options to go upwards
+        {
+            if(currentCostMatrixCell == getPixelEnergy(x, currentRowY) + costMatrix[x][currentRowY - 1])
+            {
+                previousRowX = x;
+            }
+                else
+            {
+                previousRowX = x+1;
+            }
+        }
+        //if we are on the last column  then w have only 2 options to go upwards
+        else if (x == costMatrix.length-1)
+        {
+            if(currentCostMatrixCell == getPixelEnergy(x, currentRowY) + costMatrix[x][currentRowY - 1])
+            {
+                previousRowX = x;
+            }
+            else
+            {
+                previousRowX = x+1;
+            }
+        }
+        //if we are in the middle then we have 3 options , and we need to check the new neighbours that were created
+        else
+        {
+            //look at the one above
+            if(currentCostMatrixCell == getPixelEnergy(x, currentRowY) + costMatrix[x][currentRowY - 1] + CvForCostMatrix(greyScaleImage, x, currentRowY)) {
+                previousRowX = x;
+                //look at the left
+            } else if (currentCostMatrixCell == getPixelEnergy(x, currentRowY) + costMatrix[x - 1][currentRowY - 1] + ClForCostMatrix(greyScaleImage, x, currentRowY)) {
+                previousRowX = x - 1;
+            } else {
+                previousRowX = x + 1;
+            }
+        }
 
 		return previousRowX;
 

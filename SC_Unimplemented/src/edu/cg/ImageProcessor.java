@@ -112,10 +112,7 @@ public class ImageProcessor extends FunctioalForEachLoops {
 
 		});
 
-		//TODO: REMOVE THIS!
 
-		//SeamsCarver
-		//SeamsCarver.getPixelEnergy(0,0);
 
 		return greyscaleImage;
 
