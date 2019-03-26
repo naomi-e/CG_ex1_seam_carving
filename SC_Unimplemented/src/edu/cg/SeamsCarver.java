@@ -124,7 +124,7 @@ public class SeamsCarver extends ImageProcessor {
 		//passses over the rest of the matrix , calculating each specifics cells/pixels cost
 		for (int y = 1; y < greyScaleImage.getHeight(); y++)
 		{
-			for (x = 0; x < greyScaleImage.getWidth(); x++)
+			for (x = 0; x < costMatrix.length; x++)
 			{
 				calculateCostMatrixElement(x, y);
 			}
@@ -143,7 +143,7 @@ public class SeamsCarver extends ImageProcessor {
 	 */
 	private void calculateCostMatrixElement(int x, int y) {
 		//this method , should not be called from the first row from the cost matrix
-
+        long isNegative;//todo: remove this, its for checking
 
 		//todo: mekre ketsoon , make sure this works
 		if (x == 0)//if we are on the first column , thus cant have an upper left corener
@@ -165,6 +165,10 @@ public class SeamsCarver extends ImageProcessor {
 							costMatrix[x][y - 1] + CvForCostMatrix(greyScaleImage, x, y),
 							costMatrix[x + 1][y - 1] + CrForCostMatrix(greyScaleImage, x, y));
 		}
+
+        isNegative=costMatrix[x][y];
+		isNegative=isNegative;
+
 	}
 
 	//returns the minimum number between 3 long numbers
@@ -199,11 +203,11 @@ public class SeamsCarver extends ImageProcessor {
 		//energy in rows
 		if (y < inHeight - 1)
 		{
-			e2 = (long) ((new Color(greyScaleImage.getRGB(remappedX, y)).getBlue()) -
-					(new Color(greyScaleImage.getRGB(remappedX, y+1)).getBlue()));
+			e2 = Math.abs( ((new Color(greyScaleImage.getRGB(remappedX, y)).getBlue()) -
+					(new Color(greyScaleImage.getRGB(remappedX, y+1)).getBlue())));
 		} else {
-			e2 = (long) ((new Color(greyScaleImage.getRGB(remappedX, y)).getBlue()) -
-					(new Color(greyScaleImage.getRGB(remappedX, y-1)).getBlue()));
+			e2 = Math.abs(((new Color(greyScaleImage.getRGB(remappedX, y)).getBlue()) -
+					(new Color(greyScaleImage.getRGB(remappedX, y-1)).getBlue())));
 		}
 
 		/*
@@ -211,8 +215,9 @@ public class SeamsCarver extends ImageProcessor {
 			However, if we add a positive number to Integer.MAX_VALUE, we will receive a negative number.
 			Therefore we will not add e1 and e2 to the calculation in cases where e3 = Integer.MAX_VALUE
 		*/
-		if (imageMask[remappedX][y]) {
-			e3 = Integer.MAX_VALUE;
+		if (imageMask[y][remappedX]) {
+			//remember in the array they submitted the rows and columns are different than yours
+		    e3 = Integer.MAX_VALUE;
 		} else {
 			e3 = 0;
 		}
@@ -326,7 +331,7 @@ public class SeamsCarver extends ImageProcessor {
 	 */
 	private int[][] initiateXAxisRemapper() {
 
-		xAxisRemapperArray = new int[this.outWidth][this.outHeight];
+		xAxisRemapperArray = new int[this.inWidth][this.inHeight];
 		for (int x = 0; x < xAxisRemapperArray.length; x++) {
 			for (int y = 0; y < xAxisRemapperArray[0].length; y++) {
 				xAxisRemapperArray[x][y] = x;
