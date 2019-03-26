@@ -27,7 +27,7 @@ public class SeamsCarver extends ImageProcessor {
 	protected int[][] backTrackingArray;
 	protected boolean[][] helpingMask; //important , remember the helping mask is transpose to the actual mask matrix
 	protected long[][] pixelEnergyArray;
-
+	protected boolean[][] maskToReturn;
 
 
 
@@ -145,11 +145,11 @@ public class SeamsCarver extends ImageProcessor {
 			resizeOp = this::duplicateWorkingImage;
 
 		// TODO: You may initialize your additional fields and apply some preliminary calculations.
+		maskToReturn=new boolean[inWidth][inHeight];
 		greyScaleImage = greyscale();
 		greyScaleArray=getGreyScaleArray(greyScaleImage);
 		xAxisRemapperArray = initiateXAxisRemapper();
 		helpingMask=getHelpingMask();//this is the mask that gets shifted to the left the removal of each seam
-
 		this.logger.log("preliminary calculations were ended.");
 	}
 
@@ -159,7 +159,6 @@ public class SeamsCarver extends ImageProcessor {
 	}
 
 
-	//currentlyWorkingOn
 
 	/**
 	 * this is the starting method in the reduction process
@@ -176,7 +175,7 @@ public class SeamsCarver extends ImageProcessor {
 
 		//removing one seam at a time
 		for (numOfRemovedSeams = 0; numOfRemovedSeams < reduceImageBy; numOfRemovedSeams++) {
-			//todo: make sure this is the way to do things
+
 			backTrackingForBestSeam(startCalculatingCostMatrix());
 		}
 
@@ -223,23 +222,7 @@ public class SeamsCarver extends ImageProcessor {
 		pixelEnergyArray=getPixelEnergyArray();
 
 		int x;
-		//fills the first row with pixel energy & takes in concidiration the "already removed" pixels
-		//for (x = 0; x < costMatrix.length; x++) //TODO: change this because in buffered image we shuold start from 0 and not from 1???  ***this todo applies to everything in this method****
-		//{
-		//	//costMatrix[x][0] = getPixelEnergy(x, 0);
-		//	costMatrix[x][y] = pixelEnergyArray[x][y];
-		//}
 
-
-
-	/*	for(int y = 0 ;y<costMatrix[0].length;y++) {
-			for (x = 0; x < costMatrix.length; x++) //TODO: change this because in buffered image we shuold start from 0 and not from 1???  ***this todo applies to everything in this method****
-			{
-
-				costMatrix[x][y] = pixelEnergyArray[x][y];
-			}
-		}
-*/
 		//passses over the rest of the matrix , calculating each specifics cells/pixels cost
 		for (int y = 0; y < costMatrix[0].length; y++)
 		{
@@ -250,21 +233,8 @@ public class SeamsCarver extends ImageProcessor {
 		}
 
 
-		//after finishing the cost array , we start tracing back
-
-		//transposeArray(costMatrix);
 
 
-	/*
-
-		try {
-			writeCostMatixToFile();
-		}
-		catch (Exception e)
-		{}
-
-
-		*/
 
 		return costMatrix;
 	}
@@ -275,11 +245,6 @@ public class SeamsCarver extends ImageProcessor {
 	 */
 	private void calculateCostMatrixElement(int x, int y) {
 
-
-		//costMatrix[x][y] = getPixelEnergy(x, y);
-		//instead of going to the cost matrix each element at a time , i initilied the cost matrix to the pixel energy from the start calculate cost matrix
-
-		//this method , should not be called from the first row from the cost matrix
 
 
 		costMatrix[x][y]=getPixelEnergy(x,y);
@@ -332,6 +297,9 @@ public class SeamsCarver extends ImageProcessor {
 
 	}
 
+
+
+
 	//returns the minimum number between 3 long numbers
 	private long minimumOfThree(long a, long b, long c) {
 		return Math.min(a, Math.min(b, c));
@@ -348,42 +316,14 @@ public class SeamsCarver extends ImageProcessor {
 
 		long e1, e2, e3;
 
-		//int remappedX=xAxisRemapper(x,y);
-
-
-
-		//energy in columns
-
-		/*if (remappedX < inWidth - 1)//as long as we are not in the last column (remember we need to remap the current x we have in the newly resized image, and check its coordinates in the original image)
-		{
-			e1 = Math.abs( ((new Color(greyScaleImage.getRGB(remappedX, y)).getBlue()) -
-					(new Color(greyScaleImage.getRGB(xAxisRemapper(x+1,y), y)).getBlue())));
-		} else {
-			e1 = Math.abs( ((new Color(greyScaleImage.getRGB(remappedX, y)).getBlue()) -
-					(new Color(greyScaleImage.getRGB(xAxisRemapper(x-1,y), y)).getBlue())));
-		}
-
-
-		//energy in rows
-		if (y < inHeight - 1)
-		{
-			e2 = Math.abs( ((new Color(greyScaleImage.getRGB(remappedX, y)).getBlue()) -
-					(new Color(greyScaleImage.getRGB(remappedX, y+1)).getBlue())));
-		} else {
-			e2 = Math.abs(((new Color(greyScaleImage.getRGB(remappedX, y)).getBlue()) -
-					(new Color(greyScaleImage.getRGB(remappedX, y-1)).getBlue())));
-		}
-		*/
 
 		//energy in columns
 		if (x < greyScaleArray.length - 1)//as long as we are not in the last column (remember we need to remap the current x we have in the newly resized image, and check its coordinates in the original image)
 		{
-			//e1= Math.abs( greyScaleArray[remappedX][y] - greyScaleArray[xAxisRemapper(x+1,y)][y]);
 			e1= Math.abs( greyScaleArray[x][y] - greyScaleArray[x+1][y]);
 
 
 		} else {
-			//e1=Math.abs( greyScaleArray[x][y] - greyScaleArray[xAxisRemapper(x-1,y)][y]);
 			e1=Math.abs( greyScaleArray[x][y] - greyScaleArray[x-1][y]);
 		}
 
@@ -391,10 +331,8 @@ public class SeamsCarver extends ImageProcessor {
 		//energy in rows
 		if (y < greyScaleArray[0].length - 1)
 		{
-			//e2= Math.abs( greyScaleArray[remappedX][y] - greyScaleArray[remappedX][y+1]);
 			e2= Math.abs( greyScaleArray[x][y] - greyScaleArray[x][y+1]);
 		} else {
-			//e2=Math.abs( greyScaleArray[remappedX][y] - greyScaleArray[remappedX][y-1]);
 			e2=Math.abs( greyScaleArray[x][y] - greyScaleArray[x][y-1]);
 		}
 
@@ -405,7 +343,6 @@ public class SeamsCarver extends ImageProcessor {
 		*/
 
 
-		//if (imageMask[y][remappedX]) {
 		if (helpingMask[x][y]) {
 			//remember in the array they submitted the rows and columns are different than yours
 			e3 = Integer.MAX_VALUE;
@@ -432,15 +369,13 @@ public class SeamsCarver extends ImageProcessor {
 			cl = 255; //if its a border then count it as important data
 		} else // if in the middle of the matrix
 		{
-			//cl = Math.abs(greyScaleArray[xAxisRemapper(x + 1, y)][y] - greyScaleArray[xAxisRemapper(x - 1,y)][y]); // get the neighbours
 			cl = Math.abs(greyScaleArray[x + 1][y] - greyScaleArray[x - 1][y]); // get the neighbours
 
 		}
 
 		if (x > 0) //if we are not on the first column
 		{
-			//cl+= Math.abs( greyScaleArray[xAxisRemapper(x-1,y)][y] -  greyScaleArray[xAxisRemapper(x,y-1)][y-1]);
-			cl+= Math.abs( greyScaleArray[x-1][y] -  greyScaleArray[x][y-1]);
+		cl+= Math.abs( greyScaleArray[x-1][y] -  greyScaleArray[x][y-1]);
 
 
 		}
@@ -459,8 +394,7 @@ public class SeamsCarver extends ImageProcessor {
 		}
 		else // if in the middle of the matrix
 		{
-			//cv=Math.abs(greyScaleArray[xAxisRemapper(x + 1, y)][y] - greyScaleArray[xAxisRemapper(x - 1,y)][y]);
-			cv=Math.abs(greyScaleArray[x + 1][y] - greyScaleArray[x - 1][y]);
+		cv=Math.abs(greyScaleArray[x + 1][y] - greyScaleArray[x - 1][y]);
 
 		}
 		return cv;
@@ -477,15 +411,13 @@ public class SeamsCarver extends ImageProcessor {
 		}
 		else // if in the middle of the matrix
 		{
-			//cr=Math.abs(greyScaleArray[xAxisRemapper(x + 1, y)][y] - greyScaleArray[xAxisRemapper(x - 1,y)][y]);
-			cr=Math.abs(greyScaleArray[x + 1][y] - greyScaleArray[x - 1][y]);
+		cr=Math.abs(greyScaleArray[x + 1][y] - greyScaleArray[x - 1][y]);
 
 		}
 
 		if(x<(inWidth-(numOfRemovedSeams+1)))
 		{
-		//	cr += Math.abs(greyScaleArray[xAxisRemapper(x,y-1)][y-1] - greyScaleArray[xAxisRemapper(x+1,y)][y]);
-			cr += Math.abs(greyScaleArray[y-1][y-1] - greyScaleArray[x+1][y]);
+		cr += Math.abs(greyScaleArray[y-1][y-1] - greyScaleArray[x+1][y]);
 
 		}
 		return cr;
@@ -513,8 +445,6 @@ public class SeamsCarver extends ImageProcessor {
 		}
 
 
-		//goal: to trace back according to the instruction in the recitation
-		//to use the shiftRowIndecesLeft    to delete from the x axis remapper array instead of the image itself
 
 	}
 
@@ -555,56 +485,6 @@ public class SeamsCarver extends ImageProcessor {
 	private int getBackTrackedColumnFor(int x, int currentRowY, long[][] costMatrix) {
 		return backTrackingArray[x][currentRowY];
 
-		/*
-		int previousRowX;
-		long currentCostMatrixCell = costMatrix[x][currentRowY];
-
-
-		//pcb: el mohskele he lama bakon b2a'7er column se33etha anu sh'7enem bedo i3mal
-
-       // currentCostMatrixCell=
-
-        //todo: this needs rechecking
-        if(x==0)//if we are on the first column   then we have only 2 options to go upwards
-        {
-            if(currentCostMatrixCell == getPixelEnergy(x, currentRowY) + costMatrix[x][currentRowY - 1])
-            {
-                previousRowX = x;
-            }
-                else
-            {
-                previousRowX = x+1;
-            }
-        }
-        //if we are on the last column  then w have only 2 options to go upwards
-        else if (x >= costMatrix.length-1)
-        {
-            if(currentCostMatrixCell == getPixelEnergy(x, currentRowY) + costMatrix[x][currentRowY - 1])
-            {
-                previousRowX = x;
-            }
-            else
-            {
-                previousRowX = x-1;
-            }
-        }
-        //if we are in the middle then we have 3 options , and we need to check the new neighbours that were created
-        else
-        {
-            //look at the one above
-            if(currentCostMatrixCell == getPixelEnergy(x, currentRowY) + costMatrix[x][currentRowY - 1] + CvForCostMatrix( x, currentRowY)) {
-                previousRowX = x;
-                //look at the left
-            } else if (currentCostMatrixCell == getPixelEnergy(x, currentRowY) + costMatrix[x - 1][currentRowY - 1] + ClForCostMatrix(x, currentRowY)) {
-                previousRowX = x - 1;
-            } else {
-                previousRowX = x + 1;
-            }
-        }
-
-		return previousRowX;
-	*/
-
 	}
 
 
@@ -625,13 +505,7 @@ public class SeamsCarver extends ImageProcessor {
 		return xAxisRemapperArray;
 	}
 
-	/**xAxisRemapper
-	 * the method takes advantage of the XAxisRemapper array to get where the x should hae been in the original photo
-	 * returns the X coordinate that should be in the after seam carving photo (after removing seams without creating new images)
-	 */
-	private int xAxisRemapper(int x, int y) {
-		return xAxisRemapperArray[x][y];
-	}
+
 
 
 	//todo: should this be changed, as it is , the last columns stay the same since we dont really care about them
@@ -676,6 +550,16 @@ public class SeamsCarver extends ImageProcessor {
 			}
 		}
 		return output;
+	}
+
+	private boolean[][] getMaskToReturn()
+	{
+		boolean[][] toReturn=new boolean[inHeight][inWidth];
+		for (int y = 0; y < outHeight; y++) {
+			for (int x = 0; x < outWidth; x++) {
+				toReturn[y][x]=helpingMask[x][y];
+		}
+		return toReturn;
 	}
 
 }
