@@ -80,6 +80,8 @@ public class SeamsCarver extends ImageProcessor {
 			backTrackingForBestSeam(startCalculatingCostMatrix());
 		}
 
+
+		//todo: should we add the transpose & redo the reduction process in this method???
 		return renderImageFromXAxisRemapper();
 	}
 
@@ -110,18 +112,19 @@ public class SeamsCarver extends ImageProcessor {
 	private long[][] startCalculatingCostMatrix() {
 
 		greyScaleImage = greyscale(); // this variable is mainly for finding the pixel energy
-		costMatrix = new long[greyScaleImage.getWidth()][greyScaleImage.getHeight()];//TODO: make sure its the right size
+		costMatrix = new long[inWidth-numOfRemovedSeams][inHeight];
 
-
-		//fills the first row with pixel energy
-		for (int x = 0; x < greyScaleImage.getWidth(); x++) //TODO: change this because in buffered image we shuold start from 0 and not from 1???
+		int x;
+		//fills the first row with pixel energy & takes in concidiration the "already removed" pixels
+		for ( x= 0; x < costMatrix.length; x++) //TODO: change this because in buffered image we shuold start from 0 and not from 1???  ***this todo applies to everything in this method****
 		{
-			costMatrix[x][0] = getPixelEnergy(x, 0); //todo: make sure the coordinates are correct
+			costMatrix[x][0] = getPixelEnergy(x, 0);
 		}
 
 		//passses over the rest of the matrix , calculating each specifics cells/pixels cost
-		for (int y = 1; y < greyScaleImage.getHeight(); y++) {
-			for (int x = 0; x < greyScaleImage.getWidth(); x++)//TODO: change this because in buffered image we shuold start from 0 and not from 1???
+		for (int y = 1; y < greyScaleImage.getHeight(); y++)
+		{
+			for (x = 0; x < greyScaleImage.getWidth(); x++)
 			{
 				calculateCostMatrixElement(x, y);
 			}
@@ -150,10 +153,11 @@ public class SeamsCarver extends ImageProcessor {
 
 		}
 		//todo: mekre ketsoon , make sure this works
-		else if (x == greyScaleImage.getWidth())//if we are on the last column   //TODO: make sure this is right and we dont need .getwidth-1
+		else if (x == costMatrix.length-1)//if we are on the last column   //TODO: make sure this is right and we dont need .getwidth-1
 		{
 			costMatrix[x][y] = getPixelEnergy(x, y) + Math.min(costMatrix[x - 1][y - 1], costMatrix[x][y - 1]);
-		} else {
+		}
+		else {
 			//adds the new value to the matrix acording to the difinition in the homeowork pdf
 			costMatrix[x][y] = getPixelEnergy(x, y) +
 					minimumOfThree(
@@ -171,27 +175,35 @@ public class SeamsCarver extends ImageProcessor {
 
 	/**
 	 * gives you the pixel energy , as it is described in the recetation #2  slide 6
-	 * calculates the "contrast"between the desired pixel and its neighbours
+	 * parameters: x,y    are the absolute x,y relative to the cost matrix
+	 * calculates the "contrast" between the desired pixels neighbours  by remapping the positioning of the absolute x,y to the relative x,y in the original image after carving
 	 * gives a high pixel energy if the pixel is masked (which means we dont want it to be touched)
 	 */
 	public long getPixelEnergy(int x, int y) {
 
 		long e1, e2, e3;
 
-		if (y < inWidth - 1) {
-			e1 = (long) ((new Color(greyScaleImage.getRGB(x, y)).getBlue()) -
-					(new Color(greyScaleImage.getRGB(x, y + 1)).getBlue()));
+		int remappedX=xAxisRemapper(x,y);
+
+		//energy in columns
+		if (remappedX < inWidth - 1)//as long as we are not in the last column (remember we need to remap the current x we have in the newly resized image, and check its coordinates in the original image)
+		{
+			e1 = (long) ((new Color(greyScaleImage.getRGB(remappedX, y)).getBlue()) -
+					(new Color(greyScaleImage.getRGB(xAxisRemapper(x+1,y), y)).getBlue()));
 		} else {
-			e1 = (long) ((new Color(greyScaleImage.getRGB(x, y)).getBlue()) -
-					(new Color(greyScaleImage.getRGB(x, y - 1)).getBlue()));
+			e1 = (long) ((new Color(greyScaleImage.getRGB(remappedX, y)).getBlue()) -
+					(new Color(greyScaleImage.getRGB(xAxisRemapper(x-1,y), y)).getBlue()));
 		}
 
-		if (x < inHeight - 1) {
-			e2 = (long) ((new Color(greyScaleImage.getRGB(x, y)).getBlue()) -
-					(new Color(greyScaleImage.getRGB(x + 1, y)).getBlue()));
+
+		//energy in rows
+		if (y < inHeight - 1)
+		{
+			e2 = (long) ((new Color(greyScaleImage.getRGB(remappedX, y)).getBlue()) -
+					(new Color(greyScaleImage.getRGB(remappedX, y+1)).getBlue()));
 		} else {
-			e2 = (long) ((new Color(greyScaleImage.getRGB(x, y)).getBlue()) -
-					(new Color(greyScaleImage.getRGB(x - 1, y)).getBlue()));
+			e2 = (long) ((new Color(greyScaleImage.getRGB(remappedX, y)).getBlue()) -
+					(new Color(greyScaleImage.getRGB(remappedX, y-1)).getBlue()));
 		}
 
 		/*
@@ -199,7 +211,7 @@ public class SeamsCarver extends ImageProcessor {
 			However, if we add a positive number to Integer.MAX_VALUE, we will receive a negative number.
 			Therefore we will not add e1 and e2 to the calculation in cases where e3 = Integer.MAX_VALUE
 		*/
-		if (imageMask[x][y]) {
+		if (imageMask[remappedX][y]) {
 			e3 = Integer.MAX_VALUE;
 		} else {
 			e3 = 0;
@@ -214,24 +226,24 @@ public class SeamsCarver extends ImageProcessor {
 	//TODO: remember there will be errors if you call this method from the first  column
 	//todo: not sure f this is the correct implementation to begin with
 
-	// named by its definition : returns the valued difference between (x,y)'s new neighbours  that were created depending on how the seam was removed  ,
+	// named by its definition : returns the valued difference between original images (x,y)'s new neighbours  that were created depending on how the seam was removed  ,
 	private long ClForCostMatrix(BufferedImage greyscaleImage, int x, int y) {
 
-		return Math.abs((int) ((new Color(greyscaleImage.getRGB(x + 1, y)).getBlue())) - (int) ((new Color(greyscaleImage.getRGB(x - 1, y)).getBlue()))) + Math.abs((int) ((new Color(greyscaleImage.getRGB(x - 1, y)).getBlue())) - (int) ((new Color(greyscaleImage.getRGB(x, y - 1)).getBlue())));
+		return Math.abs((int) ((new Color(greyscaleImage.getRGB(xAxisRemapper(x+1,y), y)).getBlue())) - (int) ((new Color(greyscaleImage.getRGB(xAxisRemapper(x-1,y), y)).getBlue()))) + Math.abs((int) ((new Color(greyscaleImage.getRGB(xAxisRemapper(x-1,y), y)).getBlue())) - (int) ((new Color(greyscaleImage.getRGB(xAxisRemapper(x,y-1), y - 1)).getBlue())));
 
 	}
 
-	// named by its definition : returns the valued difference between (x,y)'s new neighbours  that were created depending on how the seam was removed  ,
+	// named by its definition : returns the valued difference between original images (x,y)'s new neighbours  that were created depending on how the seam was removed  ,
 	private long CvForCostMatrix(BufferedImage greyscaleImage, int x, int y) {
 
-		return Math.abs((int) ((new Color(greyscaleImage.getRGB(x + 1, y)).getBlue())) - (int) ((new Color(greyscaleImage.getRGB(x - 1, y)).getBlue())));
+		return Math.abs((int) ((new Color(greyscaleImage.getRGB(xAxisRemapper(x+1,y), y)).getBlue())) - (int) ((new Color(greyscaleImage.getRGB(xAxisRemapper(x-1,y), y)).getBlue())));
 
 	}
 
-	// named by its definition : returns the valued difference between (x,y)'s new neighbours  that were created depending on how the seam was removed  ,
+	// named by its definition : returns the valued difference between original images (x,y)'s new neighbours  that were created depending on how the seam was removed  ,
 	private long CrForCostMatrix(BufferedImage greyscaleImage, int x, int y) {
 
-		return Math.abs((int) ((new Color(greyscaleImage.getRGB(x + 1, y)).getBlue())) - (int) ((new Color(greyscaleImage.getRGB(x - 1, y)).getBlue()))) + Math.abs((int) ((new Color(greyscaleImage.getRGB(x, y - 1)).getBlue())) - (int) ((new Color(greyscaleImage.getRGB(x + 1, y)).getBlue())));
+		return Math.abs((int) ((new Color(greyscaleImage.getRGB(xAxisRemapper(x+1,y), y)).getBlue())) - (int) ((new Color(greyscaleImage.getRGB(xAxisRemapper(x-1,y), y)).getBlue()))) + Math.abs((int) ((new Color(greyscaleImage.getRGB(xAxisRemapper(x,y-1),y-1)).getBlue())) - (int) ((new Color(greyscaleImage.getRGB(xAxisRemapper(x+1,y), y)).getBlue())));
 
 	}
 
@@ -323,11 +335,11 @@ public class SeamsCarver extends ImageProcessor {
 		return xAxisRemapperArray;
 	}
 
-	/**
+	/**xAxisRemapper
 	 * the method takes advantage of the XAxisRemapper array to get where the x should hae been in the original photo
 	 * returns the X coordinate that should be in the after seam carving photo (after removing seams without creating new images)
 	 */
-	private int getCorrectXPositionForPixel(int x, int y) {
+	private int xAxisRemapper(int x, int y) {
 		return xAxisRemapperArray[x][y];
 	}
 
